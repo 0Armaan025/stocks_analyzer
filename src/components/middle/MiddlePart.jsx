@@ -3,10 +3,10 @@ import axios from "axios";
 
 const MiddlePart = () => {
   const [stockSymbols, setStockSymbols] = useState(
-    Array.from({ length: 6 }, () => "")
+    Array.from({ length: 4 }, () => "")
   );
   const [stocksData, setStocksData] = useState(
-    Array.from({ length: 6 }, () => ({}))
+    Array.from({ length: 4 }, () => ({}))
   );
   const [error, setError] = useState("");
 
