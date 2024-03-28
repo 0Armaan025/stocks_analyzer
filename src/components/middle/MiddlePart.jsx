@@ -2,49 +2,138 @@ import React, { useState } from "react";
 import axios from "axios";
 
 const MiddlePart = () => {
-  // State to store input data for each stock
   const [stockSymbols, setStockSymbols] = useState(
     Array.from({ length: 6 }, () => "")
   );
-
-  // State to store data for each stock
   const [stocksData, setStocksData] = useState(
-    Array.from({ length: 6 }, () => [])
+    Array.from({ length: 6 }, () => ({}))
   );
+  const [error, setError] = useState("");
 
-  // Function to handle input change for each stock
   const handleInputChange = (index, value) => {
     const newStockSymbols = [...stockSymbols];
     newStockSymbols[index] = value;
     setStockSymbols(newStockSymbols);
   };
 
-  // Function to handle form submission
+  const filterStockData = (data) => {
+    const statsObject = {
+      "Market Cap": data["Market Cap"] || "-",
+      "Current Price": data["Current Price"] || "-",
+      "Book Value": data["Book Value"] || "-",
+      "Dividend Yield": data["Dividend Yield"] || "-",
+      ROCE: data["ROCE"] || "-",
+      ROE: data["ROE"] || "-",
+      "Face Value": data["Face Value"] || "-",
+      "Stock P/E": data["Stock P/E"] || "-",
+      "EPS in Rs": data["EPS in Rs"] || "-",
+      "Compounded Sales Growth (10 Years:)":
+        data["Compounded Sales Growth"]?.["10 Years:"] || "-",
+      "Compounded Sales Growth (5 Years:)":
+        data["Compounded Sales Growth"]?.["5 Years:"] || "-",
+      "Compounded Sales Growth (3 Years:)":
+        data["Compounded Sales Growth"]?.["3 Years:"] || "-",
+      "Compounded Sales Growth (TTM:)":
+        data["Compounded Sales Growth"]?.["TTM:"] || "-",
+      "Compounded Profit Growth (10 Years:)":
+        data["Compounded Profit Growth"]?.["10 Years:"] || "-",
+      "Compounded Profit Growth (5 Years:)":
+        data["Compounded Profit Growth"]?.["5 Years:"] || "-",
+      "Compounded Profit Growth (3 Years:)":
+        data["Compounded Profit Growth"]?.["3 Years:"] || "-",
+      "Compounded Profit Growth (TTM:)":
+        data["Compounded Profit Growth"]?.["TTM:"] || "-",
+      "Return on Equity (10 Years:)":
+        data["Return on Equity"]?.["10 Years:"] || "-",
+      "Return on Equity (5 Years:)":
+        data["Return on Equity"]?.["5 Years:"] || "-",
+      "Return on Equity (3 Years:)":
+        data["Return on Equity"]?.["3 Years:"] || "-",
+      "Return on Equity (Last Year:)":
+        data["Return on Equity"]?.["Last Year:"] || "-",
+      "Stock Price CAGR (10 Years:)":
+        data["Stock Price CAGR"]?.["10 Years:"] || "-",
+      "Stock Price CAGR (5 Years:)":
+        data["Stock Price CAGR"]?.["5 Years:"] || "-",
+      "Stock Price CAGR (3 Years:)":
+        data["Stock Price CAGR"]?.["3 Years:"] || "-",
+      "Stock Price CAGR (1 Year:)":
+        data["Stock Price CAGR"]?.["1 Year:"] || "-",
+    };
+
+    return statsObject;
+  };
+
   const handleSubmit = async () => {
     try {
       const updatedStocksData = [];
 
-      // Loop through each stock symbol and send a request to the backend
-      for (let i = 0; i < stockSymbols.length; i++) {
-        const symbol = stockSymbols[i];
-        const response = await axios.get(
-          `http://127.0.0.1:5000/stock-details/${symbol}`
-        );
+      // Create an array of promises for fetching stock data
+      const promises = stockSymbols.map(async (symbol) => {
+        if (!symbol) return; // Skip empty symbols
 
-        // Process the response data and update your table accordingly
-        const stockData = response.data;
-        console.log("Stock Data:", stockData);
+        let retries = 0;
+        let stockData = null;
 
-        // Push the data for the current stock to the updatedStocksData array
-        updatedStocksData.push(stockData);
-      }
+        // Retry fetching data for a maximum of 3 times
+        while (retries < 3 && !stockData) {
+          const response = await axios.get(
+            `https://screener-api-custom-flask.vercel.app/stock-details/${symbol}`
+          );
+          stockData = response.data;
 
-      // Update the state with the new stock data
+          if (!stockData) {
+            retries++;
+          }
+        }
+
+        // If data is still not available after retries, push an empty object
+        if (!stockData) {
+          updatedStocksData.push({});
+          return;
+        }
+
+        const filteredStockData = filterStockData(stockData);
+        updatedStocksData.push(filteredStockData); // Push filtered data to the array
+      });
+
+      // Wait for all promises to resolve
+      await Promise.all(promises);
+
+      // Once all promises are resolved, update the state with filtered data
       setStocksData(updatedStocksData);
     } catch (error) {
-      console.error("Error fetching stock data:", error);
+      setError("Error fetching stock data: " + error.message);
     }
   };
+
+  const metrics = [
+    "Market Cap",
+    "Current Price",
+    "Book Value",
+    "Dividend Yield",
+    "ROCE",
+    "ROE",
+    "Face Value",
+    "Stock P/E",
+    "EPS in Rs",
+    "Compounded Sales Growth (10 Years:)",
+    "Compounded Sales Growth (5 Years:)",
+    "Compounded Sales Growth (3 Years:)",
+    "Compounded Sales Growth (TTM:)",
+    "Compounded Profit Growth (10 Years:)",
+    "Compounded Profit Growth (5 Years:)",
+    "Compounded Profit Growth (3 Years:)",
+    "Compounded Profit Growth (TTM:)",
+    "Return on Equity (10 Years:)",
+    "Return on Equity (5 Years:)",
+    "Return on Equity (3 Years:)",
+    "Return on Equity (Last Year:)",
+    "Stock Price CAGR (10 Years:)",
+    "Stock Price CAGR (5 Years:)",
+    "Stock Price CAGR (3 Years:)",
+    "Stock Price CAGR (1 Year:)",
+  ];
 
   return (
     <>
@@ -77,48 +166,20 @@ const MiddlePart = () => {
         </div>
         <br />
         <center>
-          <table className="w-[80%] " style={{ background: "#1b2334" }}>
+          {error && <p>{error}</p>}
+          <table className="w-[80%]" style={{ background: "#1b2334" }}>
             <thead>
               <tr>
                 <th className="bg-slate-600 text-white px-4 py-2">Metrics</th>
                 {stockSymbols.map((symbol, index) => (
-                  <th
-                    key={index}
-                    className="bg-slate-600 text-white px-4 py-2 "
-                  >
+                  <th key={index} className="bg-slate-600 text-white px-4 py-2">
                     {symbol || `Stock ${index + 1}`}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {[
-                "Market Cap",
-                "Price",
-                "Book Value",
-                "Dividend Yield",
-                "ROCE",
-                "ROE",
-                "Face Value",
-                "Stock P/E",
-                "EPS",
-                "Compounded Sales Growth (10 years)",
-                "Compounded Sales Growth (5 years)",
-                "Compounded Sales Growth (3 years)",
-                "Compounded Sales Growth (TTM)",
-                "Compounded Sales Growth (10 years)",
-                "Compounded Profit Growth (5 years)",
-                "Compounded Profit Growth (3 years)",
-                "Compounded Profit Growth (TTM)",
-                "Return on Equity (10 years)",
-                "Return on Equity (5 years)",
-                "Return on Equity (3 years)",
-                "Return on Equity (Last year)",
-                "Stock Price CAGR (10 years)",
-                "Stock Price CAGR (5 years)",
-                "Stock Price CAGR (3 years)",
-                "Stock Price CAGR (1 year)",
-              ].map((metric, rowIndex) => (
+              {metrics.map((metric, rowIndex) => (
                 <tr key={rowIndex}>
                   <td className="border px-4 py-2 text-white whitespace-nowrap w-[12%]">
                     {metric}
@@ -128,7 +189,11 @@ const MiddlePart = () => {
                       key={colIndex}
                       className="border px-4 py-2 whitespace-nowrap w-[8%] text-white"
                     >
-                      {stockData[rowIndex]}
+                      {stockData[metric]
+                        ? metric === "EPS in Rs"
+                          ? stockData[metric]["Dec 2020"]
+                          : stockData[metric]
+                        : ""}
                     </td>
                   ))}
                 </tr>
